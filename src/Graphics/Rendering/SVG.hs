@@ -120,12 +120,13 @@ renderTransform :: Transformation R2 -> S.Svg -> S.Svg
 renderTransform t svg = S.g svg ! (A.transform $ S.matrix a1 a2 b1 b2 c1 c2)
   where (a1,a2,b1,b2,c1,c2) = getMatrix t
 
-renderStyles :: Bool -> Style v -> S.Attribute
-renderStyles ignoreFill s = mconcat . map ($ s) $
+renderStyles :: Bool -> Int -> Style v -> S.Attribute
+renderStyles ignoreFill id_ s = mconcat . map ($ s) $
   [ renderLineColor
-  , if ignoreFill
-      then const (renderAttr A.fillOpacity (Just (0 :: Double)))
-      else renderFillColor
+  --, if ignoreFill
+  --    then const (renderAttr A.fillOpacity (Just (0 :: Double)))
+  --    else renderFillColor
+  , renderFillTexture id_
   , renderLineWidth
   , renderLineCap
   , renderLineJoin
@@ -159,6 +160,16 @@ renderFillColor s =
        fillColorRgb     = colorToRgbString <$> fillColor_
        fillColorOpacity = colorToOpacity <$> fillColor_
 
+renderFillTexture :: Int -> Style v -> S.Attribute
+renderFillTexture id_ s = case (getFillTexture <$> getAttr s) of
+  Just (SC (SomeColor c)) -> (renderAttr A.fill fillColorRgb) `mappend`
+                             (renderAttr A.fillOpacity fillColorOpacity)
+    where
+      fillColorRgb     = Just $ colorToRgbString c
+      fillColorOpacity = Just $ colorToOpacity c
+  Just (LG g) -> mempty
+  Just (RG g) -> mempty
+  Nothing     -> mempty
 
 renderOpacity :: Style v -> S.Attribute
 renderOpacity s = renderAttr A.opacity opacity_
