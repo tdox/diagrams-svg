@@ -167,7 +167,7 @@ renderFillTexture id_ s = case (getFillTexture <$> getAttr s) of
     where
       fillColorRgb     = Just $ colorToRgbString c
       fillColorOpacity = Just $ colorToOpacity c
-  Just (LG g) -> mempty
+  Just (LG g) -> renderAttr A.fill $ Just "url(#mygradient)"
   Just (RG g) -> mempty
   Nothing     -> mempty
 

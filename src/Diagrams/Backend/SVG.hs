@@ -105,6 +105,8 @@ import           Text.Blaze.Svg.Renderer.Utf8 (renderSvg)
 import           Text.Blaze.Svg11             ((!))
 import qualified Text.Blaze.Svg11             as S
 import qualified Text.Blaze.Svg.Renderer.String as StringSvg
+import qualified Text.Blaze.Svg11.Attributes as A
+
 
 -- from this package
 import qualified Graphics.Rendering.SVG       as R
@@ -153,6 +155,22 @@ renderSvgWithClipping svg s t =
       clipPathId += 1
       id_ <- use clipPathId
       R.renderClip p id_ <$> renderClips ps
+
+renderFillTextureDefs :: Style v -> SvgRenderM
+renderFillTextureDefs s =
+  case (getFillTexture <$> getAttr s) of
+    Just (LG g) -> return lg
+    Just (RG g) -> return mempty
+    _           -> return mempty
+    where lg = S.defs $ do
+                  S.lineargradient
+                    ! A.id_ (S.toValue "mygradient")
+                    $ do S.stop
+                           ! A.stopColor (S.toValue "rgb(255,0,0)")
+                           ! A.offset (S.toValue "0.05")
+                         S.stop
+                           ! A.stopColor (S.toValue "rgb(125,125,125)")
+                           ! A.offset (S.toValue "0.95")
 
 instance Backend SVG R2 where
   data Render  SVG R2 = R SvgRenderM
