@@ -105,7 +105,6 @@ import           Text.Blaze.Svg.Renderer.Utf8 (renderSvg)
 import           Text.Blaze.Svg11             ((!))
 import qualified Text.Blaze.Svg11             as S
 import qualified Text.Blaze.Svg.Renderer.String as StringSvg
-import qualified Text.Blaze.Svg11.Attributes as A
 
 
 -- from this package
@@ -116,12 +115,13 @@ import qualified Graphics.Rendering.SVG       as R
 data SVG = SVG
     deriving (Show, Typeable)
 
-data SvgRenderState = SvgRenderState { _clipPathId :: Int, _ignoreFill :: Bool }
+data SvgRenderState = SvgRenderState { _clipPathId :: Int, _ignoreFill :: Bool
+                                     , _textureId :: Int }
 
 makeLenses ''SvgRenderState
 
 initialSvgRenderState :: SvgRenderState
-initialSvgRenderState = SvgRenderState 0 False
+initialSvgRenderState = SvgRenderState 0 False 0
 
 -- | Monad to keep track of state when rendering an SVG.
 --   Currently just keeps a monotonically increasing counter
@@ -137,8 +137,8 @@ instance Monoid (Render SVG R2) where
       return (svg1 `mappend` svg2)
 
 -- | Renders a <g> element with styles applied as attributes.
-renderStyledGroup :: Bool -> Style v -> (S.Svg -> S.Svg)
-renderStyledGroup ignFill s = S.g ! R.renderStyles ignFill 0 s
+renderStyledGroup :: Bool -> Int -> Style v -> (S.Svg -> S.Svg)
+renderStyledGroup ignFill id_ s = S.g ! R.renderStyles ignFill id_ s
 
 renderSvgWithClipping :: S.Svg             -- ^ Input SVG
                       -> Style v           -- ^ Styles
@@ -156,21 +156,11 @@ renderSvgWithClipping svg s t =
       id_ <- use clipPathId
       R.renderClip p id_ <$> renderClips ps
 
-renderFillTextureDefs :: Style v -> SvgRenderM
-renderFillTextureDefs s =
-  case (getFillTexture <$> getAttr s) of
-    Just (LG g) -> return lg
-    Just (RG g) -> return mempty
-    _           -> return mempty
-    where lg = S.defs $ do
-                  S.lineargradient
-                    ! A.id_ (S.toValue "mygradient")
-                    $ do S.stop
-                           ! A.stopColor (S.toValue "rgb(255,0,0)")
-                           ! A.offset (S.toValue "0.05")
-                         S.stop
-                           ! A.stopColor (S.toValue "rgb(125,125,125)")
-                           ! A.offset (S.toValue "0.95")
+fillTextureDefs :: Style v -> SvgRenderM
+fillTextureDefs s = do
+  id_ <- use textureId
+  textureId += 1
+  return $ R.renderFillTextureDefs id_ s
 
 instance Backend SVG R2 where
   data Render  SVG R2 = R SvgRenderM
@@ -194,8 +184,10 @@ instance Backend SVG R2 where
       ignoreFill .= False
       svg <- r
       ign <- use ignoreFill
+      id_ <- use textureId
       clippedSvg <- renderSvgWithClipping svg s t
-      let styledSvg = renderStyledGroup ign s clippedSvg
+      texturedSvg <- fillTextureDefs s
+      let styledSvg = renderStyledGroup ign id_ s (clippedSvg `mappend` texturedSvg)
       -- This is where the frozen transformation is applied.
       return (R.renderTransform t styledSvg)
 

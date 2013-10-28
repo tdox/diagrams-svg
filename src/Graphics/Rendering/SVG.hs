@@ -24,6 +24,7 @@ module Graphics.Rendering.SVG
     , renderStyles
     , renderTransform
     , renderMiterLimit
+    , renderFillTextureDefs
     ) where
 
 -- from base
@@ -123,10 +124,9 @@ renderTransform t svg = S.g svg ! (A.transform $ S.matrix a1 a2 b1 b2 c1 c2)
 renderStyles :: Bool -> Int -> Style v -> S.Attribute
 renderStyles ignoreFill id_ s = mconcat . map ($ s) $
   [ renderLineColor
-  --, if ignoreFill
-  --    then const (renderAttr A.fillOpacity (Just (0 :: Double)))
-  --    else renderFillColor
-  , renderFillTexture id_
+  , if ignoreFill
+      then const (renderAttr A.fillOpacity (Just (0 :: Double)))
+      else renderFillTexture id_
   , renderLineWidth
   , renderLineCap
   , renderLineJoin
@@ -160,6 +160,26 @@ renderFillColor s =
        fillColorRgb     = colorToRgbString <$> fillColor_
        fillColorOpacity = colorToOpacity <$> fillColor_
 
+renderFillTextureDefs :: Int -> Style v -> S.Svg
+renderFillTextureDefs i s =
+  case (getFillTexture <$> getAttr s) of
+    Just (LG g) -> lg g
+    Just (RG g) -> rg g
+    _           -> mempty
+    where
+      lg g =
+        S.defs $ do
+          S.lineargradient
+            ! A.id_ (S.toValue ("gradient" ++ (show i)))
+            $ do mconcat $ (map toStop) (g^.lGradStops)
+      rg g =
+        S.defs $ do
+          S.radialgradient
+            ! A.id_ (S.toValue ("gradient" ++ (show i)))
+            $ do mconcat $ (map toStop) (g^.rGradStops)
+      toStop (c, o) = S.stop ! A.stopColor (S.toValue (colorToRgbString c))
+                             ! A.offset (S.toValue (show o))
+
 renderFillTexture :: Int -> Style v -> S.Attribute
 renderFillTexture id_ s = case (getFillTexture <$> getAttr s) of
   Just (SC (SomeColor c)) -> (renderAttr A.fill fillColorRgb) `mappend`
@@ -167,9 +187,9 @@ renderFillTexture id_ s = case (getFillTexture <$> getAttr s) of
     where
       fillColorRgb     = Just $ colorToRgbString c
       fillColorOpacity = Just $ colorToOpacity c
-  Just (LG g) -> renderAttr A.fill $ Just "url(#mygradient)"
+  Just (LG g) -> A.fill (S.toValue ("url(#gradient" ++ show id_ ++ ")"))
   Just (RG g) -> mempty
-  Nothing     -> mempty
+  Nothing     -> renderFillColor s -- check for old style fillColor attribute.
 
 renderOpacity :: Style v -> S.Attribute
 renderOpacity s = renderAttr A.opacity opacity_
