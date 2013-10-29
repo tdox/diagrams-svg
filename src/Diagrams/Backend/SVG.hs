@@ -156,6 +156,8 @@ renderSvgWithClipping svg s t =
       id_ <- use clipPathId
       R.renderClip p id_ <$> renderClips ps
 
+-- | Create a new texture defs svg element using the style and the current
+--   id number, then increment the gradient id number.
 fillTextureDefs :: Style v -> SvgRenderM
 fillTextureDefs s = do
   id_ <- use textureId
