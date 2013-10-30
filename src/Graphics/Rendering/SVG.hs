@@ -160,17 +160,6 @@ renderFillColor s =
        fillColorRgb     = colorToRgbString <$> fillColor_
        fillColorOpacity = colorToOpacity <$> fillColor_
 
--- The starting point and ending point of the gradient. Coordinates should
--- be between 0 and 1. SVG applies the gradient relative to the bounding box
--- or user space. The default is bounding box.
-vToXY :: R2 -> (Double, Double, Double, Double)
-vToXY v = (x1, y1, x2, y2)
-  where
-    (x, y) = unr2 (normalized v)
-    x1 = max 0 (-x)
-    y1 = max 0 (-y)
-    x2 = max 0 x
-    y2 = max 0 y
 
 -- Create a defs element to contain the gradient so that it can be used as
 -- an attribute vale for fill.
@@ -186,12 +175,14 @@ renderFillTextureDefs i s =
         S.defs $ do
           S.lineargradient
             ! A.id_ (S.toValue ("gradient" ++ (show i)))
-            ! A.x1 (S.toValue (p^._1))
-            ! A.y1 (S.toValue (p^._2))
-            ! A.x2 (S.toValue (p^._3))
-            ! A.y2 (S.toValue (p^._4))
+            ! A.x1 (S.toValue ((unp2 (g^.lGradStart))^._1))
+            ! A.y1 (S.toValue ((unp2 (g^.lGradStart))^._2))
+            ! A.x2 (S.toValue ((unp2 (g^.lGradEnd))^._1))
+            ! A.y2 (S.toValue ((unp2 (g^.lGradEnd))^._2))
+            ! A.gradienttransform (S.toValue ("rotate(" ++ show angle ++",.5,.5)"))
             $ do mconcat $ (map toStop) (g^.lGradStops)
-        where p = vToXY (g^.lGradVector)
+        where
+          Deg angle = direction (g^.lGradVector)
       rg g =
         S.defs $ do
           S.radialgradient
