@@ -164,6 +164,19 @@ fillTextureDefs s = do
   textureId += 1
   return $ R.renderFillTextureDefs id_ s
 
+renderSvgWithTexture :: S.Svg -> Style v -> SvgRenderM
+renderSvgWithTexture svg s =
+  case (getFillTexture <$> getAttr s) of
+    Nothing -> return svg
+    Just (LG g) -> do
+      id_ <- use textureId
+      textureId += 1
+      return $ (R.renderFillTextureDefs id_ s `mappend` (lgSvg g id_))
+  where
+    lgSvg g id_= R.renderTransform (g^.lGradTrans) (lgSvg' g id_)
+    lgSvg' g id_ = (S.g ! R.renderFillTexture id_ s) (svg' g)
+    svg' g = R.renderTransform (inv (g^.lGradTrans)) svg
+
 instance Backend SVG R2 where
   data Render  SVG R2 = R SvgRenderM
   type Result  SVG R2 = S.Svg
@@ -188,8 +201,8 @@ instance Backend SVG R2 where
       ign <- use ignoreFill
       id_ <- use textureId
       clippedSvg <- renderSvgWithClipping svg s t
-      texturedSvg <- fillTextureDefs s
-      let styledSvg = renderStyledGroup ign id_ s (clippedSvg `mappend` texturedSvg)
+      texturedSvg <- renderSvgWithTexture clippedSvg s
+      let styledSvg = renderStyledGroup ign id_ s texturedSvg
       -- This is where the frozen transformation is applied.
       return (R.renderTransform t styledSvg)
 

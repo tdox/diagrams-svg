@@ -25,6 +25,7 @@ module Graphics.Rendering.SVG
     , renderTransform
     , renderMiterLimit
     , renderFillTextureDefs
+    , renderFillTexture
     ) where
 
 -- from base
@@ -124,9 +125,9 @@ renderTransform t svg = S.g svg ! (A.transform $ S.matrix a1 a2 b1 b2 c1 c2)
 renderStyles :: Bool -> Int -> Style v -> S.Attribute
 renderStyles ignoreFill id_ s = mconcat . map ($ s) $
   [ renderLineColor
-  , if ignoreFill
-      then const (renderAttr A.fillOpacity (Just (0 :: Double)))
-      else renderFillTexture id_
+  --, if ignoreFill
+  --    then const (renderAttr A.fillOpacity (Just (0 :: Double)))
+  --    else renderFillTexture id_
   , renderLineWidth
   , renderLineCap
   , renderLineJoin
@@ -172,17 +173,14 @@ renderFillTextureDefs i s =
     _           -> mempty
     where
       lg g =
-        S.defs $ do
-          S.lineargradient
-            ! A.id_ (S.toValue ("gradient" ++ (show i)))
-            ! A.x1 (S.toValue ((unp2 (g^.lGradStart))^._1))
-            ! A.y1 (S.toValue ((unp2 (g^.lGradStart))^._2))
-            ! A.x2 (S.toValue ((unp2 (g^.lGradEnd))^._1))
-            ! A.y2 (S.toValue ((unp2 (g^.lGradEnd))^._2))
-            ! A.gradienttransform (S.toValue ("rotate(" ++ show angle ++",.5,.5)"))
-            $ do mconcat $ (map toStop) (g^.lGradStops)
-        where
-          Deg angle = direction (g^.lGradVector)
+        -- S.defs $ do (maybe putting in a defs is a good idea?)
+        S.lineargradient
+          ! A.id_ (S.toValue ("gradient" ++ (show i)))
+          ! A.x1 (S.toValue ((unp2 (g^.lGradStart))^._1))
+          ! A.y1 (S.toValue ((unp2 (g^.lGradStart))^._2))
+          ! A.x2 (S.toValue ((unp2 (g^.lGradEnd))^._1))
+          ! A.y2 (S.toValue ((unp2 (g^.lGradEnd))^._2))
+          $ do mconcat $ (map toStop) (g^.lGradStops)
       rg g =
         S.defs $ do
           S.radialgradient
