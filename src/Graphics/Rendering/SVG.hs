@@ -32,7 +32,7 @@ module Graphics.Rendering.SVG
 import           Data.List                   (intercalate, intersperse)
 
 -- from lens
-import           Control.Lens
+import           Control.Lens                hiding (transform)
 
 -- from diagrams-lib
 import           Diagrams.Prelude            hiding (Attribute, Render, e, (<>))
@@ -125,9 +125,9 @@ renderTransform t svg = S.g svg ! (A.transform $ S.matrix a1 a2 b1 b2 c1 c2)
 renderStyles :: Bool -> Int -> Style v -> S.Attribute
 renderStyles ignoreFill id_ s = mconcat . map ($ s) $
   [ renderLineColor
-  --, if ignoreFill
-  --    then const (renderAttr A.fillOpacity (Just (0 :: Double)))
-  --    else renderFillTexture id_
+  , if ignoreFill
+      then const (renderAttr A.fillOpacity (Just (0 :: Double)))
+      else renderFillTexture id_
   , renderLineWidth
   , renderLineCap
   , renderLineJoin
@@ -180,7 +180,12 @@ renderFillTextureDefs i s =
           ! A.y1 (S.toValue ((unp2 (g^.lGradStart))^._2))
           ! A.x2 (S.toValue ((unp2 (g^.lGradEnd))^._1))
           ! A.y2 (S.toValue ((unp2 (g^.lGradEnd))^._2))
+          ! A.gradienttransform (S.toValue m)
           $ do mconcat $ (map toStop) (g^.lGradStops)
+        where
+          m = S.matrix (a1/s) (a2/s) (b1/s) (b2/s) (c1/s) (c2/s)
+          (a1, a2, b1, b2, c1, c2) = getMatrix (g^.lGradTrans)
+          s = magnitude (transform (g^.lGradTrans) (g^.lGradEnd .-. g^.lGradStart))
       rg g =
         S.defs $ do
           S.radialgradient

@@ -201,10 +201,9 @@ instance Backend SVG R2 where
       ign <- use ignoreFill
       id_ <- use textureId
       clippedSvg <- renderSvgWithClipping svg s t
-      texturedSvg <- renderSvgWithTexture clippedSvg s
-      let styledSvg = renderStyledGroup ign id_ s texturedSvg
+      let styledSvg =  renderStyledGroup ign id_ s clippedSvg
       -- This is where the frozen transformation is applied.
-      return (R.renderTransform t styledSvg)
+      return (R.renderTransform t ((R.renderFillTextureDefs id_ s) `mappend`styledSvg))
 
   doRender _ opts (R r) =
     evalState svgOutput initialSvgRenderState
