@@ -173,19 +173,19 @@ renderFillTextureDefs i s =
     _           -> mempty
     where
       lg g =
-        -- S.defs $ do (maybe putting in a defs is a good idea?)
+        -- S.defs $ do (Is there a benefit to wrapping in defs?)
         S.lineargradient
           ! A.id_ (S.toValue ("gradient" ++ (show i)))
-          ! A.x1 (S.toValue ((unp2 (g^.lGradStart))^._1))
+          ! A.x1 "-0.5" --(S.toValue ((unp2 (g^.lGradStart))^._1))
           ! A.y1 (S.toValue ((unp2 (g^.lGradStart))^._2))
-          ! A.x2 (S.toValue ((unp2 (g^.lGradEnd))^._1))
+          ! A.x2 "0.5" --(S.toValue ((unp2 (g^.lGradEnd))^._1))
           ! A.y2 (S.toValue ((unp2 (g^.lGradEnd))^._2))
           ! A.gradienttransform (S.toValue m)
+          ! A.gradientunits "userSpaceOnUse"
           $ do mconcat $ (map toStop) (g^.lGradStops)
         where
-          m = S.matrix (a1/s) (a2/s) (b1/s) (b2/s) (c1/s) (c2/s)
+          m = S.matrix a1 a2 b1 b2 0 0
           (a1, a2, b1, b2, c1, c2) = getMatrix (g^.lGradTrans)
-          s = magnitude (transform (g^.lGradTrans) (g^.lGradEnd .-. g^.lGradStart))
       rg g =
         S.defs $ do
           S.radialgradient
